@@ -7,18 +7,23 @@ class LocalStorageService {
 
   static Future<List<Conversation>> getConversations() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String>? conversationsJson = prefs.getStringList(_conversationsKey);
-
-    if (conversationsJson == null) {
+    // List<String>? conversationsJson = prefs.getStringList(_conversationsKey);
+    //
+    // if (conversationsJson == null) {
+    //   return [];
+    // }
+    //
+    // List<Conversation> conversations = conversationsJson.map((conversationJson) {
+    //   Map<String, dynamic> json = jsonDecode(conversationJson);
+    //   return Conversation.fromJson(json);
+    // }).toList();
+    final conversations = prefs.getStringList(_conversationsKey);
+    if (conversations == null) {
       return [];
+    } else {
+      return conversations.map((json) => Conversation.fromJson(jsonDecode(json))).toList();
     }
-
-    List<Conversation> conversations = conversationsJson.map((conversationJson) {
-      Map<String, dynamic> json = jsonDecode(conversationJson);
-      return Conversation.fromJson(json);
-    }).toList();
-
-    return conversations;
+    // return conversations;
   }
 
   static Future<void> saveConversation(Conversation conversation) async {

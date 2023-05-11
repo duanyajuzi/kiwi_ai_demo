@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (updatedConversation != null) {
       if (_conversations.any((c) => c.id == updatedConversation.id)) {
         _updateConversation(updatedConversation);
-      } else {
+      } else if(updatedConversation.messages.isNotEmpty) {
         _addConversation(updatedConversation);
       }
     }
