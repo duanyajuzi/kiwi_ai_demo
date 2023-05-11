@@ -18,17 +18,12 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textEditingController = TextEditingController();
   final ChatGptService _chatGptService = ChatGptService();
-  final LocalStorageService _localStorageService = LocalStorageService();
-  late String _conversationId;
-  // List<Message> _messages = [];
   Conversation? _conversation;
 
   @override
   void initState() {
     super.initState();
     _conversation = widget.conversation;
-    // _conversationId = widget.conversation.id ?? Uuid().v4();
-    // _messages = widget.conversation?.messages??[];
   }
 
   void _sendMessage(String text) async {

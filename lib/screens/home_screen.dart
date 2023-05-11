@@ -48,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _navigateToChatScreen(BuildContext context, Conversation conversation) async {
-    print("conversation: $conversation ");
     Conversation updatedConversation = await Navigator.push(
       context,
       MaterialPageRoute(
