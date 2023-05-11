@@ -20,15 +20,14 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatGptService _chatGptService = ChatGptService();
   final LocalStorageService _localStorageService = LocalStorageService();
   late String _conversationId;
-  List<Message> _messages = [];
+  // List<Message> _messages = [];
   Conversation? _conversation;
 
   @override
   void initState() {
     super.initState();
-    print("conversation: ${widget.conversation}");
     _conversation = widget.conversation;
-    _conversationId = widget.conversation.id ?? Uuid().v4();
+    // _conversationId = widget.conversation.id ?? Uuid().v4();
     // _messages = widget.conversation?.messages??[];
   }
 
@@ -43,7 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
         isUserMessage: true,
         timestamp: DateTime.now());
     setState(() {
-      _messages.add(message);
+      _conversation?.messages.add(message);
     });
 
     String response = await _chatGptService.getResponse(text);
@@ -54,14 +53,11 @@ class _ChatScreenState extends State<ChatScreen> {
           isUserMessage: false,
           timestamp: DateTime.now());
       setState(() {
-        _messages.add(botMessage);
+        _conversation?.messages.add(botMessage);
       });
     }
 
-    Conversation updatedConversation = Conversation(
-        id: _conversationId,
-        title: widget.conversation.title,
-        messages: _messages);
+    Conversation updatedConversation = _conversation!;
     LocalStorageService.saveConversation(updatedConversation);
 
     if (widget.onConversationUpdated != null) {
@@ -84,9 +80,9 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               Expanded(
                 child: ListView.builder(
-                  itemCount: _messages.length,
+                  itemCount: _conversation?.messages.length ?? 0,
                   itemBuilder: (BuildContext context, int index) {
-                    Message message = _messages[index];
+                    Message message = _conversation!.messages[index];
                     return Container(
                       alignment: message.isUserMessage
                           ? Alignment.centerRight
