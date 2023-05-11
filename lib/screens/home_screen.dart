@@ -51,11 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Conversation updatedConversation = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatScreen(conversation: Conversation(
-          id: DateTime.now().toString(),
-          title: 'New Chat',
-          messages: [],
-        )),
+        builder: (context) => ChatScreen(conversation: conversation),
       ),
     );
     if (updatedConversation != null) {
