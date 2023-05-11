@@ -48,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _navigateToChatScreen(BuildContext context, Conversation conversation) async {
+    print("conversation: $conversation ");
     Conversation updatedConversation = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-      onPressed: () => _navigateToChatScreen(context, Conversation( id: DateTime.now().toString(), title: 'New Chat', messages: [])),
+      onPressed: () => _navigateToChatScreen(context, Conversation( id: Uuid().v4(), title: 'New Chat', messages: [])),
         child: Icon(Icons.add),
       ),
     );

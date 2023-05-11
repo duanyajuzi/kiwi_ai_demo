@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 import 'message.dart';
 
 class Conversation {
@@ -10,7 +12,7 @@ class Conversation {
   factory Conversation.fromJson(Map<String, dynamic>? json) {
     if (json == null) {
       // 如果 json 为 null，则返回空 Conversation 对象
-      return Conversation(id:DateTime.now().toString(),title: 'New Chat',messages: []);
+      return Conversation(id:Uuid().v4(),title: 'New Chat',messages: []);
     }
 
     final id = json['id'] ?? '';
