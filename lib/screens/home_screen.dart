@@ -10,41 +10,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Conversation> _conversations = [];
+  late Stream<List<Conversation>> _conversationsStream;
 
   @override
   void initState() {
     super.initState();
-    _loadConversations();
-  }
-
-  void _loadConversations() async {
-    List<Conversation> conversations = await LocalStorageService.loadConversations();
-    setState(() {
-      _conversations = conversations;
-    });
-  }
-
-  void _addConversation(Conversation conversation) async {
-    await LocalStorageService.saveConversation(conversation);
-    setState(() {
-      _conversations.add(conversation);
-    });
-  }
-
-  void _updateConversation(Conversation conversation) async {
-    await LocalStorageService.updateConversation(conversation);
-    setState(() {
-      int index = _conversations.indexWhere((c) => c.id == conversation.id);
-      _conversations[index] = conversation;
-    });
-  }
-
-  void _deleteConversation(Conversation conversation) async {
-    await LocalStorageService.deleteConversation(conversation.id);
-    setState(() {
-      _conversations.removeWhere((c) => c.id == conversation.id);
-    });
+    _conversationsStream = LocalStorageService.conversationsStream;
   }
 
   Future<void> _navigateToChatScreen(BuildContext context, Conversation conversation) async {
@@ -55,38 +26,47 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (updatedConversation != null) {
-      if (_conversations.any((c) => c.id == updatedConversation.id)) {
-        _updateConversation(updatedConversation);
+      if (LocalStorageService.getConversation(updatedConversation.id) != null) {
+        LocalStorageService.updateConversation(updatedConversation);
       } else if(updatedConversation.messages.isNotEmpty) {
-        _addConversation(updatedConversation);
+        LocalStorageService.saveConversation(updatedConversation);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    //空对话，uuid和 New Chat
-    // Conversation emptyConversation = Conversation( id: DateTime.now().toString(), title: 'New Chat', messages: []);
     return Scaffold(
       appBar: AppBar(
         title: Text('ChatGPT Flutter'),
       ),
-      body: ListView.builder(
-        itemCount: _conversations.length,
-        itemBuilder: (context, index) {
-          Conversation conversation = _conversations[index];
-          return ListTile(
-            title: Text(conversation.title),
-              subtitle: Text(conversation.messages.isNotEmpty ? conversation.messages.last.text : ''),
-            onTap: () => _navigateToChatScreen(context, conversation),
+      body: StreamBuilder<List<Conversation>>(
+        stream: _conversationsStream,
+        builder: (BuildContext context, AsyncSnapshot<List<Conversation>> snapshot) {
+          if (!snapshot.hasData) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          List<Conversation> conversations = snapshot.data!;
+          return ListView.builder(
+            itemCount: conversations.length,
+            itemBuilder: (context, index) {
+              Conversation conversation = conversations[index];
+              return ListTile(
+                title: Text(conversation.title),
+                subtitle: Text(conversation.messages.isNotEmpty ? conversation.messages.last.text : ''),
+                onTap: () => _navigateToChatScreen(context, conversation),
+              );
+            },
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-      onPressed: () => _navigateToChatScreen(context, Conversation( id: Uuid().v4(), title: 'New Chat', messages: [])),
+        onPressed: () => _navigateToChatScreen(context, Conversation( id: Uuid().v4(), title: 'New Chat', messages: [])),
         child: Icon(Icons.add),
       ),
     );
   }
 }
-

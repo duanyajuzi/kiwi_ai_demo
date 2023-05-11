@@ -1,64 +1,65 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kiwi/models/conversation.dart';
 import 'dart:convert';
+import 'dart:async';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/conversation.dart';
 
 class LocalStorageService {
-  static const String _conversationsKey = 'conversations';
+  static SharedPreferences? _preferences;
+  static const String _keyConversations = 'conversations';
 
-  static Future<List<Conversation>> getConversations() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    // List<String>? conversationsJson = prefs.getStringList(_conversationsKey);
-    //
-    // if (conversationsJson == null) {
-    //   return [];
-    // }
-    //
-    // List<Conversation> conversations = conversationsJson.map((conversationJson) {
-    //   Map<String, dynamic> json = jsonDecode(conversationJson);
-    //   return Conversation.fromJson(json);
-    // }).toList();
-    final conversations = prefs.getStringList(_conversationsKey);
-    if (conversations == null) {
-      return [];
-    } else {
-      return conversations.map((json) => Conversation.fromJson(jsonDecode(json))).toList();
-    }
-    // return conversations;
+  static final StreamController<List<Conversation>> _conversationsStreamController =
+  StreamController<List<Conversation>>.broadcast();
+
+  static Future<void> init() async {
+    _preferences = await SharedPreferences.getInstance();
+  }
+
+  static List<Conversation> getConversations() {
+    final conversationsJson = _preferences!.getStringList(_keyConversations) ?? [];
+    return conversationsJson.map((json) => Conversation.fromJson(jsonDecode(json))).toList();
+  }
+
+  static Conversation getConversation(String conversationId) {
+    final conversationsJson = _preferences!.getStringList(_keyConversations) ?? [];
+    return conversationsJson.map((json) => Conversation.fromJson(jsonDecode(json))).toList().firstWhere((c) => c.id == conversationId);
   }
 
   static Future<void> saveConversation(Conversation conversation) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> conversationsJson = prefs.getStringList(_conversationsKey) ?? [];
-
-    Map<String, dynamic> json = conversation.toJson();
-    String conversationJson = json.toString();
-
-    conversationsJson.add(conversationJson);
-
-    await prefs.setStringList(_conversationsKey, conversationsJson);
-  }
-   
-  static Future<List<Conversation>> loadConversations() async {
-    return await getConversations();
+    if (!containsConversation(conversation.id)) {
+      final conversations = getConversations()..add(conversation);
+      await _saveConversations(conversations);
+      _conversationsStreamController.add(conversations);
+    }
   }
 
   static Future<void> updateConversation(Conversation conversation) async {
-    List<Conversation> conversations = await getConversations();
-    int index = conversations.indexWhere((c) => c.id == conversation.id);
-    if (index != -1) {
-      conversations[index] = conversation;
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      List<String> conversationsJson = conversations.map((c) => c.toJson().toString()).toList();
-      await prefs.setStringList(_conversationsKey, conversationsJson);
+    if (containsConversation(conversation.id)) {
+      final conversations = getConversations().map((c) => c.id == conversation.id ? conversation : c).toList();
+      await _saveConversations(conversations);
+      _conversationsStreamController.add(conversations);
     }
   }
 
   static Future<void> deleteConversation(String conversationId) async {
-    List<Conversation> conversations = await getConversations();
-    conversations.removeWhere((c) => c.id == conversationId);
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> conversationsJson = conversations.map((c) => c.toJson().toString()).toList();
-    await prefs.setStringList(_conversationsKey, conversationsJson);
+    final conversations = getConversations()..removeWhere((c) => c.id == conversationId);
+    await _saveConversations(conversations);
+    _conversationsStreamController.add(conversations);
+  }
+
+  static bool containsConversation(String conversationId) {
+    return getConversations().any((c) => c.id == conversationId);
+  }
+
+  static Future<void> _saveConversations(List<Conversation> conversations) async {
+    final conversationsJson = conversations.map((c) => jsonEncode(c.toJson())).toList();
+    await _preferences!.setStringList(_keyConversations, conversationsJson);
+  }
+
+  static Stream<List<Conversation>> get conversationsStream => _conversationsStreamController.stream;
+
+  static void dispose() {
+    _conversationsStreamController.close();
   }
 }
-
