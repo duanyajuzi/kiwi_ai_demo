@@ -18,7 +18,10 @@ class Conversation {
     final id = json['id'] ?? '';
     final title = json['title'] ?? '';
     final messagesJson = json['messages'] ?? [];
-    final messages = messagesJson.map((messageJson) => Message.fromJson(messageJson)).toList();
+
+    final messages = List<Message>.from(
+        messagesJson.map((messageJson) => Message.fromJson(messageJson))
+    );
 
     return Conversation(
       id: id,
@@ -36,4 +39,5 @@ class Conversation {
       'messages': messagesJson,
     };
   }
+
 }

@@ -53,7 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     Conversation updatedConversation = _conversation!;
-    LocalStorageService.saveConversation(updatedConversation);
+    // LocalStorageService.saveConversation(updatedConversation);
 
     if (widget.onConversationUpdated != null) {
       widget.onConversationUpdated!(updatedConversation);
