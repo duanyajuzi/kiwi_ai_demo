@@ -7,13 +7,20 @@ class Conversation {
 
   Conversation({required this.id, required this.title, required this.messages});
 
-  factory Conversation.fromJson(Map<String, dynamic> json) {
-    List<dynamic> messagesJson = json['messages'];
-    List<Message> messages = messagesJson.map((messageJson) => Message.fromJson(messageJson)).toList();
+  factory Conversation.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      // 如果 json 为 null，则返回空 Conversation 对象
+      return Conversation(id:DateTime.now().toString(),title: 'New Chat',messages: []);
+    }
+
+    final id = json['id'] ?? '';
+    final title = json['title'] ?? '';
+    final messagesJson = json['messages'] ?? [];
+    final messages = messagesJson.map((messageJson) => Message.fromJson(messageJson)).toList();
 
     return Conversation(
-      id: json['id'],
-      title: json['title'],
+      id: id,
+      title: title,
       messages: messages,
     );
   }
