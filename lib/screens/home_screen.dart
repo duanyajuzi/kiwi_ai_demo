@@ -50,7 +50,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _navigateToChatScreen(BuildContext context, Conversation conversation) async {
     Conversation updatedConversation = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => ChatScreen(conversation: conversation)),
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(conversation: Conversation(
+          id: DateTime.now().toString(),
+          title: 'New Chat',
+          messages: [],
+        )),
+      ),
     );
     if (updatedConversation != null) {
       if (_conversations.any((c) => c.id == updatedConversation.id)) {

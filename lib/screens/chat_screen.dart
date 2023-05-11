@@ -20,10 +20,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final LocalStorageService _localStorageService = LocalStorageService();
   late String _conversationId;
   List<Message> _messages = [];
+  Conversation? _conversation;
 
   @override
   void initState() {
     super.initState();
+    _conversation = widget.conversation;
     _conversationId = widget.conversation.id ?? DateTime.now().toString();
     // _messages = widget.conversation?.messages??[];
   }
