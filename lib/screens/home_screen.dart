@@ -72,15 +72,55 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text('KIWI AI'),
       ),
-      body: ListView.builder(
+      body: ListView.separated(
         itemCount: _conversations.length,
+        separatorBuilder: (context, index) => Divider(),
         itemBuilder: (context, index) {
           Conversation conversation = _conversations[index];
-          return ListTile(
-            title: Text(conversation.title),
-            subtitle: Text(conversation.messages.isNotEmpty ? conversation.messages.last.text : ''),
+          return InkWell(
             onTap: () => _navigateToChatScreen(context, conversation),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+              child: Row(
+                children:[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          conversation.title,
+                          style: const TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4.0),
+                        Text(
+                          conversation.messages.isNotEmpty ? conversation.messages.last.text : '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.grey[600]),
+                ],
+              ),
+            ),
           );
+          // return ListTile(
+          //   title: Text(conversation.title),
+          //   subtitle: Text(
+          //     conversation.messages.isNotEmpty ? conversation.messages.last.text : '',
+          //     maxLines: 1, // 只显示 2 行文本
+          //     overflow: TextOverflow.ellipsis, // 超出 2 行时，使用省略号来表示
+          //   ),
+          //   onTap: () => _navigateToChatScreen(context, conversation),
+          // );
         },
       ),
       floatingActionButton: FloatingActionButton(

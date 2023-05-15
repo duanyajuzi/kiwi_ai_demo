@@ -27,7 +27,7 @@ class ChatGptService {
           "frequency_penalty": 0
         },
         options: Options(
-            headers: {'Authorization': 'Bearer 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'}
+            headers: {'Authorization': 'Bearer sk-'}
         )
     );
 
@@ -38,4 +38,39 @@ class ChatGptService {
       throw Exception('Failed to get response from ChatGPT API');
     }
   }
+
+  Stream<String> getResponseStream(String prompt) async* {
+    try {
+      final response = await _dio.post(
+        'https://api.openai.com/v1/chat/completions',
+        data: {
+          'model': 'gpt-3.5-turbo',
+          'messages': [
+            {"role": "user", "content": prompt}
+          ],
+          "temperature": 1,
+          "top_p": 1,
+          "n": 1,
+          "stream": true,
+          "max_tokens": 250,
+          "presence_penalty": 0,
+          "frequency_penalty": 0
+        },
+        options: Options(headers: {'Authorization': 'Bearer sk-'}),
+      );
+
+      final stream = response.data.stream();
+      await for (var chunk in stream) {
+        final data = utf8.decode(chunk);
+        final jsonMap = json.decode(data);
+        if (jsonMap.containsKey('choices')) {
+          final message = jsonMap['choices'][0]['message']['content'] as String;
+          yield message;
+        }
+      }
+    } catch (e) {
+      throw Exception('Failed to get response from ChatGPT API');
+    }
+  }
+
 }
