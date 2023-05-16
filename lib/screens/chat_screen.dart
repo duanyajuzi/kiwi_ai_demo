@@ -22,67 +22,55 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final ChatGptService _chatGptService = ChatGptService();
   final TextEditingController _textEditingController = TextEditingController();
-  StreamController<Message> _messageStreamController = StreamController<Message>();
+  StreamController<Message> _messageStreamController =
+      StreamController<Message>();
   bool isLoading = false;
+
   @override
   void initState() {
     super.initState();
     _conversation = widget.conversation;
+    for (Message message in _conversation!.messages) {
+      _messageStreamController.add(message);
+    }
   }
 
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) {
       return;
     }
-
+    setState(() {
+      isLoading = true;
+    });
     Message message = Message(
         id: Uuid().v4(),
         text: text,
         isUserMessage: true,
         timestamp: DateTime.now());
-    // setState(() {
-    //   _conversation?.messages.add(message);
-    // });
-    // Add the user's message to the stream.
     _messageStreamController.add(message);
-
-    // String response = await _chatGptService.getResponse(text);
-    // if (response.isNotEmpty) {
-    //   Message botMessage = Message(
-    //       id: Uuid().v4(),
-    //       text: response,
-    //       isUserMessage: false,
-    //       timestamp: DateTime.now());
-    //   // Add the bot's message to the stream.
-    //   _messageStreamController.add(botMessage);
-    //   // setState(() {
-    //   //   _conversation?.messages.add(botMessage);
-    //   // });
-    // }
     try {
       await for (final response in _chatGptService.getResponseStream(text)) {
         if (response.isNotEmpty) {
           final botMessage = Message(
-            id: const Uuid().v4(),
+            id: Uuid().v4(),
             text: response,
             isUserMessage: false,
             timestamp: DateTime.now(),
           );
-
           // Add the bot's message to the stream.
           _messageStreamController.add(botMessage);
+          await Future.delayed(Duration(milliseconds: 500)); // 添加延迟
         }
       }
     } catch (e) {
       print(e);
     }
 
+    setState(() {
+      isLoading = false;
+    });
+
     Conversation updatedConversation = _conversation!;
-    // LocalStorageService.saveConversation(updatedConversation);
-    // Enable the send button.
-    //     setState(() {
-    //       isLoading = false;
-    //     });
     if (widget.onConversationUpdated != null) {
       widget.onConversationUpdated!(updatedConversation);
     }
@@ -105,14 +93,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: StreamBuilder<Message>(
                     stream: _messageStreamController.stream,
-                    builder:(BuildContext context, AsyncSnapshot<Message> snapshot) {
+                    builder: (BuildContext context,
+                        AsyncSnapshot<Message> snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
+                        return const Center(
                           child: CircularProgressIndicator(),
                         );
-                      }else{
-                        _conversation?.messages.add(snapshot.data!);
-                        return ListView.builder(
+                      } else if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      } else if (snapshot.hasData) {
+                        final message = snapshot.data!;
+                        _conversation?.messages.add(message);
+                        return ListView.separated(
+                          separatorBuilder: (BuildContext context, int index) =>
+                              Divider(),
                           itemCount: _conversation?.messages.length ?? 0,
                           itemBuilder: (BuildContext context, int index) {
                             Message message = _conversation!.messages[index];
@@ -121,9 +115,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ? Alignment.centerRight
                                   : Alignment.centerLeft,
                               child: Container(
-                                padding: EdgeInsets.all(10),
-                                margin:
-                                EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                                padding: const EdgeInsets.all(10),
+                                margin: const EdgeInsets.symmetric(
+                                    vertical: 5, horizontal: 10),
                                 decoration: BoxDecoration(
                                   color: message.isUserMessage
                                       ? Colors.blue
@@ -132,12 +126,15 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                                 child: MarkdownBody(
                                   data: message.text,
-                                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)),
+                                  styleSheet: MarkdownStyleSheet.fromTheme(
+                                      Theme.of(context)),
                                 ),
                               ),
                             );
                           },
                         );
+                      } else {
+                        return const Text('No messages');
                       }
                     },
                   ),
@@ -160,7 +157,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       IconButton(
                         icon: Icon(Icons.send),
-                        onPressed: () async{
+                        onPressed: () async {
                           setState(() {
                             isLoading = true;
                           });
@@ -170,7 +167,6 @@ class _ChatScreenState extends State<ChatScreen> {
                           });
                           _textEditingController.clear();
                         },
-
                       ),
                     ],
                   ),
@@ -178,7 +174,6 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-
         ));
   }
 }
