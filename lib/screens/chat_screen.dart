@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:kiwi/models/conversation.dart';
 import 'package:kiwi/models/message.dart';
-import 'package:kiwi/services/chatgpt_service.dart';
-import 'package:uuid/uuid.dart';
+import 'package:kiwi/services/api_chatgpt_service.dart';
+import 'package:kiwi/widgets/chat_widget.dart';
+import 'package:kiwi/widgets/text_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   final Conversation conversation;
@@ -22,17 +22,31 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final ChatGptService _chatGptService = ChatGptService();
   final TextEditingController _textEditingController = TextEditingController();
-  StreamController<Message> _messageStreamController =
+  final StreamController<Message> _messageStreamController =
       StreamController<Message>();
+
+  //聚焦底部
+  late ScrollController _scrollController;
+  late FocusNode _focusNode;
   bool isLoading = false;
 
   @override
   void initState() {
-    super.initState();
+    _scrollController = ScrollController();
     _conversation = widget.conversation;
+    _focusNode = FocusNode();
     for (Message message in _conversation!.messages) {
       _messageStreamController.add(message);
     }
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _textEditingController.dispose();
+    _focusNode.dispose();
+    super.dispose();
   }
 
   void _sendMessage(String text) async {
@@ -43,7 +57,7 @@ class _ChatScreenState extends State<ChatScreen> {
       isLoading = true;
     });
     Message message = Message(
-        id: Uuid().v4(),
+        chatIndex: 0,
         text: text,
         isUserMessage: true,
         timestamp: DateTime.now());
@@ -52,7 +66,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await for (final response in _chatGptService.getResponseStream(text)) {
         if (response.isNotEmpty) {
           final botMessage = Message(
-            id: Uuid().v4(),
+            chatIndex: 1,
             text: response,
             isUserMessage: false,
             timestamp: DateTime.now(),
@@ -76,6 +90,29 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  static Future<void> showModalSheet(BuildContext context) async {
+    await showModalBottomSheet(
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        )),
+        context: context,
+        builder: (context) {
+          return Padding(
+              padding: EdgeInsets.all(30),
+              child: Row(
+                children: [
+                  const Flexible(
+                      child: TextWidget(
+                    label: "选择模型",
+                    fontSize: 16,
+                    color: Colors.black,
+                  ))
+                ],
+              ));
+        });
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -86,65 +123,33 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(widget.conversation.title),
+            actions: [
+              IconButton(
+                onPressed: () async {
+                  showModalSheet(context);
+                },
+                icon: const Icon(Icons.auto_awesome_mosaic_outlined),
+              )
+            ],
           ),
           body: SafeArea(
             child: Column(
               children: [
-                Expanded(
-                  child: StreamBuilder<Message>(
-                    stream: _messageStreamController.stream,
-                    builder: (BuildContext context,
-                        AsyncSnapshot<Message> snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      } else if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                      } else if (snapshot.hasData) {
-                        final message = snapshot.data!;
-                        _conversation?.messages.add(message);
-                        return ListView.separated(
-                          separatorBuilder: (BuildContext context, int index) =>
-                              Divider(),
-                          itemCount: _conversation?.messages.length ?? 0,
-                          itemBuilder: (BuildContext context, int index) {
-                            Message message = _conversation!.messages[index];
-                            return Container(
-                              alignment: message.isUserMessage
-                                  ? Alignment.centerRight
-                                  : Alignment.centerLeft,
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                margin: const EdgeInsets.symmetric(
-                                    vertical: 5, horizontal: 10),
-                                decoration: BoxDecoration(
-                                  color: message.isUserMessage
-                                      ? Colors.blue
-                                      : Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: MarkdownBody(
-                                  data: message.text,
-                                  styleSheet: MarkdownStyleSheet.fromTheme(
-                                      Theme.of(context)),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      } else {
-                        return const Text('No messages');
-                      }
-                    },
-                  ),
-                ),
+                Flexible(
+                    child: ListView.builder(
+                        controller: _scrollController,
+                        itemCount: _conversation!.messages.length,
+                        itemBuilder: (context, index) {
+                          final Message msg = _conversation!.messages[index];
+                          return ChatWidget(msg: msg.text, chatIndex: index);
+                        })),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
+                          focusNode: _focusNode,
                           controller: _textEditingController,
                           decoration: InputDecoration(
                             hintText: 'Type a message',
@@ -158,14 +163,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       IconButton(
                         icon: Icon(Icons.send),
                         onPressed: () async {
-                          setState(() {
-                            isLoading = true;
-                          });
-                          _sendMessage(_textEditingController.text);
-                          setState(() {
-                            isLoading = false;
-                          });
-                          _textEditingController.clear();
+                          await sendMessage();
                         },
                       ),
                     ],
@@ -175,5 +173,40 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         ));
+  }
+
+  //滚动到底部
+  void scrollListToEnd() {
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> sendMessage() async {
+    try {
+      String msg= _textEditingController.text;
+      setState(() {
+        isLoading = true;
+        _conversation?.messages.add(Message(
+            chatIndex: 0,
+            text: msg,
+            isUserMessage: true));
+        _textEditingController.clear();
+        _focusNode.unfocus();
+      });
+      final list = await ChatGptService.sendMessage(
+          prompt: msg, modelId: "gpt-3.5-turbo");
+      _conversation?.messages.addAll(list);
+      setState(() {});
+    } catch (e) {
+      print(e);
+    } finally {
+      setState(() {
+        scrollListToEnd();
+        isLoading = false;
+      });
+    }
   }
 }
